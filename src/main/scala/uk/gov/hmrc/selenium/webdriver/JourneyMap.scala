@@ -16,18 +16,29 @@
 
 package uk.gov.hmrc.selenium.webdriver
 
-import org.scalatest.TestSuite
+import org.scalatest.{Outcome, TestSuite, TestSuiteMixin}
 
-trait JourneyMap extends Screenshot { this: TestSuite =>
+trait JourneyMap extends TestSuiteMixin with Screenshot { this: TestSuite =>
 
   val testSuiteName = this.suiteName.replaceAll(" ", "-").replaceAll(":", "")
+
+  var testName: String = ""
 
   implicit def screenshotter: Screenshotter = new Screenshotter {
     def maybeTakeScreenshot(): Unit = {
       val screenshotName = s"${System.currentTimeMillis}.png"
-      captureScreenshot(screenshotName, s"./target/journey-map/html-report/images/screenshots/$testSuiteName/")
+      captureScreenshot(
+        screenshotName,
+        s"./target/journey-map/html-report/images/screenshots/$testSuiteName/$testName/"
+      )
     }
 
     def version = "JourneyMap"
   }
+
+  abstract override def withFixture(test: NoArgTest): Outcome = {
+    testName = test.name.replaceAll(" ", "-").replaceAll(":", "")
+    super.withFixture(test)
+  }
+
 }
