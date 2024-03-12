@@ -25,8 +25,8 @@ import java.time.Duration
 trait PageObject {
 
   implicit def screenshotter: Screenshotter = new Screenshotter {
-    def maybeTakeScreenshot(): Unit = ()
-    def version: String             = "default"
+    def maybeTakeScreenshot(maybeElement: Option[WebElement] = None): Unit = ()
+    def version: String                                                    = "default"
   }
 
   private def fluentWait: Wait[WebDriver] = new FluentWait[WebDriver](Driver.instance)
@@ -35,11 +35,12 @@ trait PageObject {
 
   protected def click(locator: By)(implicit screenshotter: Screenshotter): Unit = {
     waitForElementToBePresent(locator)
-    // TODO if it's a button/link, highlight it and take a screenshot
+    val element = findElement(locator)
     println(screenshotter.version)
+    screenshotter.maybeTakeScreenshot(Some(element))
+    element.click()
+    waitForElementToBePresent(By.tagName("body"))
     screenshotter.maybeTakeScreenshot()
-    findElement(locator).click()
-    // TODO then take another screenshot? after a time, or on presence of some element?
   }
 
   protected def get(url: String)(implicit screenshotter: Screenshotter): Unit = {

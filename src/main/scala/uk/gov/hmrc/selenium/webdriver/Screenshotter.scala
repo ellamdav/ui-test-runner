@@ -16,9 +16,11 @@
 
 package uk.gov.hmrc.selenium.webdriver
 
+import org.openqa.selenium.WebElement
+
 trait Screenshotter {
 
-  def maybeTakeScreenshot(): Unit
+  def maybeTakeScreenshot(maybeElement: Option[WebElement] = None): Unit
 
   def version: String
 

@@ -16,22 +16,54 @@
 
 package uk.gov.hmrc.selenium.webdriver
 
+import org.openqa.selenium.{JavascriptExecutor, WebElement}
 import org.scalactic.source.Position
 import org.scalatest.{Informer, Informing, Outcome, TestSuite, TestSuiteMixin}
 
 trait JourneyMap extends TestSuiteMixin with Informing with Screenshot { this: TestSuite =>
 
-  val testSuiteName = this.suiteName.replaceAll(" ", "-").replaceAll(":", "")
+  private val testSuiteName = this.suiteName.replaceAll(" ", "-").replaceAll(":", "")
 
-  var testName: String = ""
-  var stepName: String = ""
+  protected var testName: String = ""
+  private var stepName: String   = ""
 
   implicit def screenshotter: Screenshotter = new Screenshotter {
-    def maybeTakeScreenshot(): Unit = {
+    def maybeTakeScreenshot(maybeElement: Option[WebElement] = None): Unit = {
       val screenshotName = s"${System.currentTimeMillis}-$stepName.png"
-      captureScreenshot(
-        screenshotName,
-        s"./target/journey-map/html-report/images/screenshots/$testSuiteName/$testName/"
+
+      maybeElement.filter(isNavigation).foreach { element =>
+        highlightElement(element)
+      }
+
+      maybeElement match {
+        case Some(element) if !isNavigation(element) => ()
+        case _                                       =>
+          captureScreenshot(
+            screenshotName,
+            s"./target/journey-map/html-report/images/screenshots/$testSuiteName/$testName/"
+          )
+      }
+    }
+
+    private def isNavigation(element: WebElement) = {
+      val tagName       = element.getTagName.toLowerCase
+      val typeAttribute = Option(element.getAttribute("type")).map(_.toLowerCase).getOrElse("")
+
+      // Check if it's a link with an href attribute
+      val isLink = tagName == "a" && Option(element.getAttribute("href")).isDefined
+
+      // Check if it's a button or an input element that might submit a form
+      val isFormButton = tagName == "button" || (tagName == "input" && typeAttribute == "submit")
+
+      isLink || isFormButton
+    }
+
+    private def highlightElement(element: WebElement): Unit = {
+      val js: JavascriptExecutor = Driver.instance.asInstanceOf[JavascriptExecutor]
+      js.executeScript(
+        "arguments[0].setAttribute('style', arguments[1]);",
+        element,
+        "border: 4px solid red;"
       )
     }
 
@@ -40,9 +72,7 @@ trait JourneyMap extends TestSuiteMixin with Informing with Screenshot { this: T
 
   abstract override def withFixture(test: NoArgTest): Outcome = {
     testName = sanitise(test.name)
-    val outcome = super.withFixture(test)
-    screenshotter.maybeTakeScreenshot()
-    outcome
+    super.withFixture(test)
   }
 
   private val customInformer = new Informer {
