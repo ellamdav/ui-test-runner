@@ -16,17 +16,19 @@
 
 package uk.gov.hmrc.selenium.webdriver
 
-import org.scalatest.{Outcome, TestSuite, TestSuiteMixin}
+import org.scalactic.source.Position
+import org.scalatest.{Informer, Informing, Outcome, TestSuite, TestSuiteMixin}
 
-trait JourneyMap extends TestSuiteMixin with Screenshot { this: TestSuite =>
+trait JourneyMap extends TestSuiteMixin with Informing with Screenshot { this: TestSuite =>
 
   val testSuiteName = this.suiteName.replaceAll(" ", "-").replaceAll(":", "")
 
   var testName: String = ""
+  var stepName: String = ""
 
   implicit def screenshotter: Screenshotter = new Screenshotter {
     def maybeTakeScreenshot(): Unit = {
-      val screenshotName = s"${System.currentTimeMillis}.png"
+      val screenshotName = s"${System.currentTimeMillis}-$stepName.png"
       captureScreenshot(
         screenshotName,
         s"./target/journey-map/html-report/images/screenshots/$testSuiteName/$testName/"
@@ -37,8 +39,21 @@ trait JourneyMap extends TestSuiteMixin with Screenshot { this: TestSuite =>
   }
 
   abstract override def withFixture(test: NoArgTest): Outcome = {
-    testName = test.name.replaceAll(" ", "-").replaceAll(":", "")
-    super.withFixture(test)
+    testName = sanitise(test.name)
+    val outcome = super.withFixture(test)
+    screenshotter.maybeTakeScreenshot()
+    outcome
   }
 
+  private val customInformer = new Informer {
+    def apply(info: String, payload: Option[Any] = None)(implicit pos: Position): Unit = {
+      stepName = sanitise(info)
+      JourneyMap.super.info(info)
+    }
+  }
+
+  abstract override def info: Informer = customInformer
+
+  private def sanitise(s: String) =
+    s.replaceAll(" ", "-").replaceAll(":", "")
 }
