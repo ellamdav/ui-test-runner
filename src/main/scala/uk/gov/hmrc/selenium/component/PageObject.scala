@@ -18,23 +18,35 @@ package uk.gov.hmrc.selenium.component
 
 import org.openqa.selenium.{By, Keys, WebDriver, WebElement}
 import org.openqa.selenium.support.ui.{ExpectedConditions, FluentWait, Select, Wait}
-import uk.gov.hmrc.selenium.webdriver.Driver
+import uk.gov.hmrc.selenium.webdriver.{Driver, Screenshotter}
 
 import java.time.Duration
 
 trait PageObject {
 
+  implicit def screenshotter: Screenshotter = new Screenshotter {
+    def maybeTakeScreenshot(): Unit = ()
+    def version: String             = "default"
+  }
+
   private def fluentWait: Wait[WebDriver] = new FluentWait[WebDriver](Driver.instance)
     .withTimeout(Duration.ofSeconds(3))
     .pollingEvery(Duration.ofSeconds(1))
 
-  protected def click(locator: By): Unit = {
+  protected def click(locator: By)(implicit screenshotter: Screenshotter): Unit = {
     waitForElementToBePresent(locator)
+    // TODO if it's a button/link, highlight it and take a screenshot
+    println(screenshotter.version)
+    screenshotter.maybeTakeScreenshot()
     findElement(locator).click()
+    // TODO then take another screenshot? after a time, or on presence of some element?
   }
 
-  protected def get(url: String): Unit =
+  protected def get(url: String)(implicit screenshotter: Screenshotter): Unit = {
     Driver.instance.get(url)
+    println(screenshotter.version)
+    screenshotter.maybeTakeScreenshot()
+  }
 
   protected def getCurrentUrl: String =
     Driver.instance.getCurrentUrl
@@ -61,11 +73,11 @@ trait PageObject {
     keys.foreach(key => element.sendKeys(key))
   }
 
-  protected def selectCheckbox(locator: By): Unit =
+  protected def selectCheckbox(locator: By)(implicit screenshotter: Screenshotter): Unit =
     if (!isSelected(locator))
       click(locator)
 
-  protected def deselectCheckbox(locator: By): Unit =
+  protected def deselectCheckbox(locator: By)(implicit screenshotter: Screenshotter): Unit =
     if (isSelected(locator))
       click(locator)
 
